@@ -1,6 +1,7 @@
 import { Bot, type Context } from 'grammy';
 import { autoRetry } from '@grammyjs/auto-retry';
 import { sequentialize } from '@grammyjs/runner';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { config } from '../config.js';
 import { buildSessionKey } from '../utils/session-key.js';
 import { authMiddleware } from './middleware/auth.middleware.js';
@@ -70,12 +71,26 @@ function getSequentializeKey(ctx: Context): string | undefined {
 }
 
 export async function createBot(): Promise<Bot> {
+  // Support HTTP/HTTPS/SOCKS proxy for Telegram API (useful in restricted networks)
+  const proxyUrl = config.TELEGRAM_PROXY_URL
+    || process.env.HTTPS_PROXY || process.env.https_proxy
+    || process.env.HTTP_PROXY || process.env.http_proxy;
+
+  const baseFetchConfig = proxyUrl
+    ? { agent: new HttpsProxyAgent(proxyUrl) }
+    : undefined;
+
+  if (proxyUrl) {
+    console.log(`[Bot] Using proxy: ${proxyUrl}`);
+  }
+
   const bot = new Bot(config.TELEGRAM_BOT_TOKEN, {
     client: {
       // Default is 500s which causes long hangs on network interruptions.
       // 60s is enough for long polling (30s) + file uploads while recovering
       // from stuck connections much faster.
       timeoutSeconds: 60,
+      baseFetchConfig,
     },
   });
 
@@ -91,11 +106,13 @@ export async function createBot(): Promise<Bot> {
   const commandList = [
     { command: 'start', description: '🚀 Show help and getting started' },
     { command: 'project', description: '📁 Set working directory' },
+    { command: 'newproject', description: '📁 Create a new project' },
     { command: 'status', description: '📊 Show current session status' },
     { command: 'clear', description: '🗑️ Clear conversation history' },
     { command: 'cancel', description: '⏹️ Cancel current request' },
     { command: 'softreset', description: '🔄 Soft reset (cancel + clear session)' },
     { command: 'resume', description: '▶️ Resume a session' },
+    { command: 'continue', description: '▶️ Continue last session' },
     { command: 'botstatus', description: '🩺 Show bot process status' },
     { command: 'restartbot', description: '🔁 Restart the bot' },
     { command: 'context', description: '🧠 Show Claude context usage' },
@@ -116,6 +133,7 @@ export async function createBot(): Promise<Bot> {
     { command: 'mode', description: '⚙️ Toggle streaming mode' },
     { command: 'terminalui', description: '🖥️ Toggle terminal-style display' },
     { command: 'tts', description: '🔊 Toggle voice replies' },
+    { command: 'ping', description: '🏓 Check if bot is responsive' },
     { command: 'commands', description: '📜 List all commands' },
   ];
 
