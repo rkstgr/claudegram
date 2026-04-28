@@ -1212,7 +1212,7 @@ export async function handleRestartBot(ctx: Context): Promise<void> {
     const child = spawn(
       BOTCTL_PATH,
       ['recover'],
-      { cwd: PROJECT_ROOT, detached: true, stdio: 'ignore', env: { ...process.env, MODE: config.BOT_MODE } }
+      { cwd: PROJECT_ROOT, detached: true, stdio: 'ignore', env: { ...process.env, MODE: 'prod' } }
     );
     child.unref();
   } catch (error) {
